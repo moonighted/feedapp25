@@ -25,7 +25,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 模拟视频倒计时 -->
+        <!-- 视频倒计时 -->
         <TextView
             android:id="@+id/tvVideoCountdown"
             android:layout_width="wrap_content"
