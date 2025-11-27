@@ -1,7 +1,9 @@
 package com.bytedance.myapplication
 
 import android.app.AlertDialog
+import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,6 +18,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bytedance.myapplication.databinding.ActivityMainBinding
 import com.bytedance.myapplication.databinding.ItemFeedCardBinding
 import com.bytedance.myapplication.databinding.ItemLoadingFooterBinding
@@ -24,7 +27,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.random.Random
 
-// ================= Model  =================
+// ================= Model (数据模型) =================
 
 data class FeedCard(
     val id: String = UUID.randomUUID().toString(),
@@ -38,28 +41,45 @@ data class FeedCard(
     }
 }
 
-// ================= Repository  =================
+// ================= Repository (数据仓库) =================
 
 class FeedRepository {
-    // 模拟网络请求
     suspend fun fetchFeed(page: Int): List<FeedCard> {
-        delay(800) // 模拟网络延迟
+        delay(600)
         val list = mutableListOf<FeedCard>()
-        val start = (page - 1) * 10
+        val startId = (page - 1) * 10
+        var currentCount = 0
 
-        for (i in 0 until 10) {
-            val isSingle = Random.nextBoolean()
-            list.add(FeedCard(
-                title = "模拟数据 - 第${page}页 - 序号${start + i}\n${if(isSingle) "[单列大图]" else "[双列小图]"}",
-                imageUrl = "https://picsum.photos/seed/${start + i}/400/${if(isSingle) 220 else 500}",
-                spanType = if (isSingle) FeedCard.SPAN_SINGLE else FeedCard.SPAN_DOUBLE
-            ))
+        while (currentCount < 10) {
+            val useSingleColumn = Random.nextBoolean()
+
+            if (useSingleColumn) {
+                list.add(createCard(page, startId + currentCount, true))
+                currentCount++
+            } else {
+                list.add(createCard(page, startId + currentCount, false))
+                currentCount++
+                list.add(createCard(page, startId + currentCount, false))
+                currentCount++
+            }
         }
         return list
     }
+
+    private fun createCard(page: Int, index: Int, isSingle: Boolean): FeedCard {
+        val width = if (isSingle) 600 else 400
+        val height = if (isSingle) 340 else 530
+        val randomColor = listOf("2c3e50", "e74c3c", "3498db", "9b59b6", "1abc9c", "f39c12").random()
+
+        return FeedCard(
+            title = "P$page-$index ${if(isSingle) "[大图推荐]" else "[小图精选]"} \n这是一段模拟的标题文字用于测试排版",
+            imageUrl = "https://via.placeholder.com/${width}x${height}/$randomColor/ffffff?text=Image+$index",
+            spanType = if (isSingle) FeedCard.SPAN_SINGLE else FeedCard.SPAN_DOUBLE
+        )
+    }
 }
 
-// ================= ViewModel  =================
+// ================= ViewModel (业务逻辑) =================
 
 class FeedViewModel : ViewModel() {
     private val repo = FeedRepository()
@@ -108,7 +128,7 @@ class FeedViewModel : ViewModel() {
     }
 }
 
-// ================= Adapter  =================
+// ================= Adapter (适配器) =================
 
 class FeedAdapter(
     private val onDelete: (Int) -> Unit
@@ -133,10 +153,9 @@ class FeedAdapter(
 
     override fun getItemCount(): Int = if (items.isEmpty()) 0 else items.size + 1
 
-    // 核心混排逻辑：告诉 LayoutManager 每个 item 占几格
     val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
         override fun getSpanSize(position: Int): Int {
-            if (position >= items.size) return 2 // Footer 占满一行
+            if (position >= items.size) return 2
             return items[position].spanType
         }
     }
@@ -158,7 +177,6 @@ class FeedAdapter(
         if (holder is FeedViewHolder && position < items.size) {
             holder.bind(items[position])
         } else if (holder is FooterViewHolder) {
-            // Footer 逻辑简单处理，实际可根据加载状态显示不同文案
             holder.binding.progressBar.visibility = View.VISIBLE
             holder.binding.tvEnd.visibility = View.GONE
         }
@@ -173,22 +191,23 @@ class FeedAdapter(
             binding.tvTitle.text = data.title
             binding.tvTag.text = if (data.spanType == FeedCard.SPAN_SINGLE) "推荐 · 单列" else "精选 · 双列"
 
-            // 动态调整图片比例
             val params = binding.ivCover.layoutParams as ConstraintLayout.LayoutParams
             params.dimensionRatio = if (data.spanType == FeedCard.SPAN_SINGLE) "16:9" else "3:4"
             binding.ivCover.layoutParams = params
 
             Glide.with(binding.root)
                 .load(data.imageUrl)
-                .placeholder(android.R.drawable.ic_menu_gallery)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .placeholder(ColorDrawable(Color.LTGRAY))
+                .error(ColorDrawable(Color.DKGRAY))
                 .into(binding.ivCover)
 
-            // 长按删除
             binding.root.setOnLongClickListener {
                 AlertDialog.Builder(it.context)
                     .setTitle("删除确认")
                     .setMessage("确定要删除这条内容吗？")
-                    .setPositiveButton("删除") { _, _ -> onDelete(layoutPosition) } // 使用 layoutPosition
+                    // ⚠️ 这里必须用 layoutPosition，否则旧版本会报错
+                    .setPositiveButton("删除") { _, _ -> onDelete(layoutPosition) }
                     .setNegativeButton("取消", null)
                     .show()
                 true
@@ -199,7 +218,7 @@ class FeedAdapter(
     class FooterViewHolder(val binding: ItemLoadingFooterBinding) : RecyclerView.ViewHolder(binding.root)
 }
 
-// ================= Activity  =================
+// ================= Activity (主界面) =================
 
 class MainActivity : AppCompatActivity() {
 
@@ -207,9 +226,7 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: FeedViewModel by viewModels()
     private lateinit var adapter: FeedAdapter
 
-    // 记录卡片曝光状态
     private val exposureStates = mutableMapOf<String, Int>()
-    // 0: 未曝光, 1: 露出, 2: >50%, 3: 完整
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -231,22 +248,18 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerView.layoutManager = layoutManager
         binding.recyclerView.adapter = adapter
 
-        // 下拉刷新
         binding.swipeRefreshLayout.setOnRefreshListener {
             viewModel.loadData(isRefresh = true)
             log("🔄 下拉刷新...")
         }
 
-        // 无限加载 + 曝光监测
         binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                // 1. 无限加载逻辑
                 val lastPos = layoutManager.findLastVisibleItemPosition()
                 if (lastPos >= adapter.itemCount - 2) {
                     viewModel.loadData(isRefresh = false)
                 }
 
-                // 2. 曝光监测逻辑
                 checkExposure()
             }
         })
@@ -263,7 +276,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 曝光检测算法
     private fun checkExposure() {
         val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
         val first = layoutManager.findFirstVisibleItemPosition()
@@ -272,30 +284,45 @@ class MainActivity : AppCompatActivity() {
         if (first == RecyclerView.NO_POSITION || last == RecyclerView.NO_POSITION) return
 
         val rvRect = Rect()
-        binding.recyclerView.getGlobalVisibleRect(rvRect) // 获取列表在屏幕上的区域
+        binding.recyclerView.getGlobalVisibleRect(rvRect)
 
         val list = viewModel.feedList.value ?: return
 
+        val currentFrameVisibleIds = mutableSetOf<String>()
+
         for (i in first..last) {
-            if (i >= list.size) continue // 排除 Footer
+            if (i >= list.size) continue
 
             val view = layoutManager.findViewByPosition(i) ?: continue
             val itemData = list[i]
 
             val itemRect = Rect()
-            val isVisible = view.getGlobalVisibleRect(itemRect) // 获取 Item 在屏幕上的区域
+            val isVisible = view.getGlobalVisibleRect(itemRect)
 
+            var ratio = 0f
             if (isVisible) {
-                // 计算重叠面积
                 if (itemRect.intersect(rvRect)) {
                     val visibleArea = itemRect.width() * itemRect.height()
                     val totalArea = view.width * view.height
-                    val ratio = visibleArea.toFloat() / totalArea.toFloat()
-
-                    handleExposure(itemData.id, i, ratio)
+                    if (totalArea > 0) {
+                        ratio = visibleArea.toFloat() / totalArea.toFloat()
+                    }
                 }
-            } else {
-                handleExposure(itemData.id, i, 0f)
+            }
+
+            if (ratio > 0f) {
+                currentFrameVisibleIds.add(itemData.id)
+            }
+
+            handleExposure(itemData.id, i, ratio)
+        }
+
+        val previouslyExposedIds = exposureStates.filter { it.value > 0 }.keys.toSet()
+
+        for (id in previouslyExposedIds) {
+            if (!currentFrameVisibleIds.contains(id)) {
+                val index = list.indexOfFirst { it.id == id }
+                handleExposure(id, index, 0f)
             }
         }
     }
@@ -303,8 +330,6 @@ class MainActivity : AppCompatActivity() {
     private fun handleExposure(id: String, index: Int, ratio: Float) {
         val oldState = exposureStates[id] ?: 0
         var newState = oldState
-
-        // 状态定义: 0=无, 1=露出(>0), 2=过半(>=0.5), 3=完整(=1.0)
 
         if (ratio <= 0f) {
             if (oldState > 0) {
@@ -337,7 +362,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             val time = java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())
             val old = binding.tvLog.text.toString()
-            binding.tvLog.text = "[$time] $msg\n$old".take(3000) // 限制日志长度
+            binding.tvLog.text = "[$time] $msg\n$old".take(3000)
         }
     }
 }
