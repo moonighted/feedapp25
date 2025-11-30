@@ -2,7 +2,6 @@
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/cardRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="4dp"
@@ -25,20 +24,29 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 视频倒计时 -->
-        <TextView
-            android:id="@+id/tvVideoCountdown"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#80000000"
-            android:padding="4dp"
-            android:textColor="#FFF"
-            android:textSize="12sp"
+        <!-- 必须有这个 videoContainer -->
+        <FrameLayout
+            android:id="@+id/videoContainer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#AA000000"
             android:visibility="gone"
-            android:text="播放中: 10s"
             app:layout_constraintBottom_toBottomOf="@id/ivCover"
             app:layout_constraintEnd_toEndOf="@id/ivCover"
-            android:layout_margin="8dp"/>
+            app:layout_constraintStart_toStartOf="@id/ivCover"
+            app:layout_constraintTop_toTopOf="@id/ivCover">
+
+            <TextView
+                android:id="@+id/tvVideoTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:drawablePadding="8dp"
+                android:text="▶ 视频播放中"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tvTitle"
@@ -47,8 +55,8 @@
             android:ellipsize="end"
             android:maxLines="2"
             android:padding="12dp"
-            android:textColor="#000000"
-            android:textSize="16sp"
+            android:textColor="#222222"
+            android:textSize="15sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -61,11 +69,11 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginBottom="12dp"
-            android:background="#F5F5F5"
+            android:background="#F0F0F0"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
-            android:text="推荐"
-            android:textColor="#999999"
+            android:text="图文"
+            android:textColor="#888888"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
