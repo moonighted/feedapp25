@@ -49,11 +49,10 @@ class FeedRepository(private val cacheManager: LocalCacheManager) {
     private fun createCard(page: Int, index: Int, isSingle: Boolean, isVideo: Boolean): FeedCard {
         val width = if (isSingle) 600 else 400
         val height = if (isSingle) 340 else 530
-        val randomColor = listOf("2c3e50", "e74c3c", "3498db", "9b59b6", "1abc9c", "f39c12").random()
 
         return FeedCard(
             title = "P$page-$index ${if(isVideo) "[视频]" else if(isSingle) "[大图]" else "[小图]"} \n${if(isVideo) "自动播放测试" else "模拟标题文字"}",
-            imageUrl = "https://via.placeholder.com/${width}x${height}/$randomColor/ffffff?text=${if(isVideo) "Video" else "Image"}+$index",
+            imageUrl = "https://picsum.photos/seed/$index/$width/$height",
             spanType = if (isSingle) FeedCard.SPAN_SINGLE else FeedCard.SPAN_DOUBLE,
             cardType = if (isVideo) FeedCard.TYPE_VIDEO else FeedCard.TYPE_IMAGE
         )
